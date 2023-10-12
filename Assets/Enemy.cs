@@ -19,54 +19,77 @@ public class Enemy : MonoBehaviour
     //Loops over the current enemies and looks for an enemy with a specified Ai
     private Vector3 enemyCheck(int a)
     {
-        while (true)
+        if (Game.GetComponent<Game>().values[3] > 9)
         {
-            if (this.gameObject.transform.parent.GetChild(i).gameObject.GetComponent<Enemy>().Ai == a)
+            while (true)
             {
-                Renemy = this.gameObject.transform.parent.GetChild(i).gameObject; break;
+                if (this.gameObject.transform.parent.GetChild(i).gameObject.GetComponent<Enemy>().Ai == a)
+                {
+                    Renemy = this.gameObject.transform.parent.GetChild(i).gameObject; break;
+                }
+                i += i == 9 ? -9 : 1;
             }
-            i += i == 9 ? -9 : 1;
+            return (Renemy.transform.position - Player.transform.position).normalized;
         }
-        return (Renemy.transform.position - Player.transform.position).normalized;
+        else
+        {
+            return new Vector3(.5f, .5f, .5f);
+        }
+    }
+    void respawn()
+    {
+        float angle = Random.Range(0, Mathf.PI);
+        transform.position = new Vector3(
+            Player.transform.position.x + Mathf.Cos(angle) * 20, 1f,
+            Player.transform.position.z + Mathf.Sin(angle) * 20);
+    }
+    void onDeath(bool boom)
+    {
+        Game.GetComponent<Game>().values[2] += boom ? 0 : score[Game.GetComponent<Game>().Gun][Ai];
+        Game.GetComponent<Game>().values[3] -= 1;
+        if (Game.GetComponent<Game>().values[3] > 9)
+        {
+            respawn();
+        }
+        else
+        {
+            Destroy(this.gameObject);
+        }
+        if (Ai == 2)
+        {
+            Game.GetComponent<Game>().Sow = 0;
+        }
+        if (Ai < 3)
+        {
+            Ai = Random.Range(0, Game.GetComponent<Game>().Sow == 0 ? 3 : 2);
+        }
+        switch (Ai)
+        {
+            case 0:
+                GetComponent<Renderer>().material = Game.GetComponent<Game>().Zombie;
+                health = 50; break;
+            case 1:
+                GetComponent<Renderer>().material = Game.GetComponent<Game>().Goblin;
+                health = 80; break;
+            case 2:
+                Game.GetComponent<Game>().Sow = 1;
+                GetComponent<Renderer>().material = Game.GetComponent<Game>().Cow;
+                health = 120; break;
+            case 3:
+                health = 200; break;
+            case 4:
+                health = 60; break;
+        }
     }
     void OnCollisionEnter(Collision collision)
     {
-        if (collision.transform.gameObject.name == "Bullet(Clone)")
+        if (collision.transform.gameObject.name == "Bullet(Clone)" |
+            collision.transform.gameObject.name == "Slash(Clone)")
         {
             health -= damage[Game.GetComponent<Game>().Gun];
             if (health < 1)
             {
-                Game.GetComponent<Game>().score += score[Game.GetComponent<Game>().Gun][Ai];
-                Debug.Log(Game.GetComponent<Game>().score);
-                float angle = Random.Range(0, Mathf.PI);
-                transform.position = new Vector3(
-                    Player.transform.position.x + Mathf.Cos(angle) * 20, 47f,
-                    Player.transform.position.z + Mathf.Sin(angle) * 20);
-                if (Ai == 2)
-                {
-                    Game.GetComponent<Game>().Sow = 0;
-                }
-                if (Ai < 3)
-                {
-                    Ai = Random.Range(0, Game.GetComponent<Game>().Sow == 0 ? 3 : 2);
-                }
-                switch (Ai)
-                {
-                    case 0:
-                        GetComponent<Renderer>().material = Game.GetComponent<Game>().Zombie;
-                        health = 50; break;
-                    case 1:
-                        GetComponent<Renderer>().material = Game.GetComponent<Game>().Goblin;
-                        health = 80; break;
-                    case 2:
-                        Game.GetComponent<Game>().Sow = 1;
-                        GetComponent<Renderer>().material = Game.GetComponent<Game>().Cow;
-                        health = 150; break;
-                    case 3:
-                        health = 200; break;
-                    case 4:
-                        health = 60; break;
-                }
+                onDeath(false);
             }
             Destroy(collision.gameObject);
         }
@@ -83,13 +106,19 @@ public class Enemy : MonoBehaviour
                 if (Game.GetComponent<Game>().Sow == 1)
                 {
                     _ = enemyCheck(2);
-                    if (Vector3.Distance(Player.transform.position, Player.transform.position) < 7.5f)
+                    Renemy = this.gameObject.transform.parent.GetChild(i).gameObject;
+                    if (Vector3.Distance(Player.transform.position, Renemy.transform.position) < 10f)
                     {
-                        nav.SetDestination(Player.transform.position + direction * 12.5f);
+                        nav.SetDestination(Player.transform.position + direction * 10f);
                     }
                 } break;
             case 2:
-                nav.SetDestination(Player.transform.position + direction * 2.5f); break;
+                nav.SetDestination(Player.transform.position);
+                if (Vector3.Distance(Player.transform.position, transform.position) < 2.6f)
+                {
+                    onDeath(true);
+                }
+                break;
             case 3:
                 direction = enemyCheck(4);
                 nav.SetDestination(Player.transform.position + direction * 7.5f); break;
@@ -143,5 +172,6 @@ public class Enemy : MonoBehaviour
                 GetComponent<Renderer>().material = Game.GetComponent<Game>().Wizard;
                 health = 60; break;
         }
+        respawn();
     }
 }
